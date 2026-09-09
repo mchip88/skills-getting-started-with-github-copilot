@@ -5,7 +5,7 @@ A super simple FastAPI application that allows students to view and sign up
 for extracurricular activities at Mergington High School.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 import os
@@ -78,25 +78,31 @@ activities = {
 }
 
 
+# Dependency to get activities
+def get_activities_db() -> dict:
+    """Dependency that provides the activities database"""
+    return activities
+
+
 @app.get("/")
 def root():
     return RedirectResponse(url="/static/index.html")
 
 
 @app.get("/activities")
-def get_activities():
-    return activities
+def get_activities(activities_db: dict = Depends(get_activities_db)):
+    return activities_db
 
 
 @app.post("/activities/{activity_name}/signup")
-def signup_for_activity(activity_name: str, email: str):
+def signup_for_activity(activity_name: str, email: str, activities_db: dict = Depends(get_activities_db)):
     """Sign up a student for an activity"""
     # Validate activity exists
-    if activity_name not in activities:
+    if activity_name not in activities_db:
         raise HTTPException(status_code=404, detail="Activity not found")
 
     # Get the specific activity
-    activity = activities[activity_name]
+    activity = activities_db[activity_name]
     # Validate student is not already signed up
     if email in activity["participants"]:
         raise HTTPException(status_code=400, detail="Student is already signed up for this activity")
@@ -107,14 +113,14 @@ def signup_for_activity(activity_name: str, email: str):
 
 
 @app.post("/activities/{activity_name}/unregister")
-def unregister_from_activity(activity_name: str, email: str):
+def unregister_from_activity(activity_name: str, email: str, activities_db: dict = Depends(get_activities_db)):
     """Unregister a student from an activity"""
     # Validate activity exists
-    if activity_name not in activities:
+    if activity_name not in activities_db:
         raise HTTPException(status_code=404, detail="Activity not found")
 
     # Get the specific activity
-    activity = activities[activity_name]
+    activity = activities_db[activity_name]
     # Validate student is signed up
     if email not in activity["participants"]:
         raise HTTPException(status_code=400, detail="Student is not signed up for this activity")
